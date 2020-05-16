@@ -85,46 +85,44 @@ class FileDownload {
 
                     val responseBody =
                         response.body ?: return@runCatching FileDownloadResult.OthersError
-                    if (responseBody != null) {
-                        try {
-                            val contentLength = responseBody.contentLength()
-                            if (contentLength > FileUtil.getAvailableSize(dirPath)) {
 
-                                continuation.resume(FileDownloadResult.StorageError)
-                            }
-                            var totalRead: Long = 0
-                            var lastRead: Long
+                    try {
+                        val contentLength = responseBody.contentLength()
+                        if (contentLength > FileUtil.getAvailableSize(dirPath)) {
 
-                            do {
-                                lastRead = responseBody.source().read(sink.buffer(), BUFFER_SIZE)
-                                if (lastRead == -1L) {
-                                    break
-                                }
-                                totalRead += lastRead
-                                sink.emitCompleteSegments()
-                            } while (true)
-                            sink.writeAll(responseBody.source())
-                            sink.close()
-                            responseBody.close()
-
-                            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-                                values.put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-                                values.put(
-                                    MediaStore.Images.Media.DATA,
-                                    downloadedFile.absolutePath
-                                )
-                                context.contentResolver.insert(
-                                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                                    values
-                                )
-                            }
-                        } catch (e: IOException) {
-                            responseBody.close()
-                            sink.close()
+                            continuation.resume(FileDownloadResult.StorageError)
                         }
-                    } else {
-                        return@runCatching FileDownloadResult.OthersError
+                        var totalRead: Long = 0
+                        var lastRead: Long
+
+                        do {
+                            lastRead = responseBody.source().read(sink.buffer(), BUFFER_SIZE)
+                            if (lastRead == -1L) {
+                                break
+                            }
+                            totalRead += lastRead
+                            sink.emitCompleteSegments()
+                        } while (true)
+                        sink.writeAll(responseBody.source())
+                        sink.close()
+                        responseBody.close()
+
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                            values.put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+                            values.put(
+                                MediaStore.Images.Media.DATA,
+                                downloadedFile.absolutePath
+                            )
+                            context.contentResolver.insert(
+                                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                                values
+                            )
+                        }
+                    } catch (e: IOException) {
+                        responseBody.close()
+                        sink.close()
                     }
+
                 }
                 return@runCatching FileDownloadResult.Successful
             }.onFailure {
